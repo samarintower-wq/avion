@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07111f">
+  <title>SkyWorld Simulator</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.130/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.130/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+</head>
+<body>
+  <div id="auth-screen" class="auth-screen">
+    <div class="auth-card">
+      <div class="brand-mark">✈</div>
+      <p class="eyebrow">FLIGHT • EXPLORE • DISCOVER</p>
+      <h1>SkyWorld <span>Simulator</span></h1>
+      <p class="muted">Твоя планета. Твой самолёт. Твой маршрут.</p>
+      <div class="auth-tabs">
+        <button class="tab active" data-auth-tab="login">Вход</button>
+        <button class="tab" data-auth-tab="register">Регистрация</button>
+      </div>
+      <form id="auth-form">
+        <label id="nickname-wrap" class="hidden">Никнейм<input id="nickname" minlength="3" maxlength="24" autocomplete="nickname" placeholder="SkyPilot"></label>
+        <label>Почта<input id="email" type="email" required autocomplete="email" placeholder="you@example.com"></label>
+        <label>Пароль<input id="password" type="password" required minlength="8" autocomplete="current-password" placeholder="Минимум 8 символов"></label>
+        <button class="primary full" type="submit" id="auth-submit">Войти в игру</button>
+        <p id="auth-message" class="message"></p>
+      </form>
+      <p class="tiny muted">Демо-интерфейс требует подключения MongoDB для регистрации и входа.</p>
+    </div>
+  </div>
+
+  <div id="game" class="game hidden">
+    <header class="topbar">
+      <a class="logo" href="#"><span class="logo-icon">✈</span><span>SKYWORLD <small>SIMULATOR</small></span></a>
+      <div class="global-search">
+        <span>⌕</span><input id="place-search" placeholder="Место или координаты: 48.85, 2.29" aria-label="Поиск места">
+        <button id="search-place" title="Найти место">Найти</button>
+      </div>
+      <div class="profile"><span id="profile-name">Pilot</span><button id="logout" class="icon-btn" title="Выйти">↪</button></div>
+    </header>
+    <div class="layout">
+      <aside class="sidebar">
+        <button class="nav-btn active" data-view="hangar"><span>✈</span><b>Ангар</b></button>
+        <button class="nav-btn" data-view="earth"><span>🌍</span><b>Земля</b></button>
+        <div class="sidebar-bottom">
+          <div class="online-dot"></div><span>WORLD SYSTEM</span><small>EARLY ACCESS</small>
+        </div>
+      </aside>
+      <main class="main">
+        <section id="hangar-view" class="view">
+          <div class="section-head">
+            <div><p class="eyebrow">YOUR FLEET</p><h2>Ангар <span class="muted">/ 10 самолётов</span></h2><p class="muted">Выбери самолёт для следующего полёта.</p></div>
+            <div class="selected-pill"><span class="online-dot"></span><span id="selected-label">Airbus A320 выбран</span></div>
+          </div>
+          <div id="aircraft-grid" class="aircraft-grid"></div>
+          <div class="note">Карточки и характеристики готовы. Реальные внешние 3D-модели нужно подключить по проверенным лицензированным GLB-ссылкам.</div>
+        </section>
+        <section id="earth-view" class="view hidden">
+          <div class="earth-toolbar">
+            <div><p class="eyebrow">LIVE WORLD</p><h2>Земля <span class="muted">/ планета без границ</span></h2></div>
+            <div class="mode-switch">
+              <button class="mode-btn active" data-mode="realistic">Рельеф</button>
+              <button class="mode-btn" data-mode="weather">Погода</button>
+            </div>
+          </div>
+          <details class="token-settings">
+            <summary>⚙ Мой Cesium ion viewer token</summary>
+            <p class="tiny muted">Вставь собственный публичный токен Cesium ion с ограничением по домену. Не вставляй master/secret-токен с правами управления токенами.</p>
+            <div class="token-row">
+              <input id="cesium-token-input" type="password" autocomplete="off" placeholder="Вставь публичный viewer token">
+              <button id="save-cesium-token" class="secondary">Сохранить</button>
+              <button id="delete-cesium-token" class="secondary">Удалить</button>
+            </div>
+            <p id="cesium-token-message" class="tiny muted" aria-live="polite"></p>
+          </details>
+          <div class="earth-stage">
+            <div id="cesiumContainer"></div>
+            <div class="map-overlay map-tools">
+              <button id="set-departure" class="small-btn">＋ Вылет</button>
+              <button id="set-destination" class="small-btn">◎ Прилёт</button>
+              <button id="fly-route" class="primary small-btn">▶ Начать полёт</button>
+            </div>
+            <div class="map-overlay flight-hud">
+              <div><small>САМОЛЁТ</small><strong id="hud-aircraft">Airbus A320</strong></div>
+              <div><small>СКОРОСТЬ</small><strong id="hud-speed">0 km/h</strong></div>
+              <div><small>ВЫСОТА</small><strong id="hud-altitude">3,000 ft</strong></div>
+            </div>
+            <div class="map-overlay coordinates-card">
+              <small>ВЫБРАННАЯ ТОЧКА</small><strong id="coords">40.6413°, -73.7781°</strong>
+              <span id="place-label">Нажми на глобус, чтобы выбрать точку</span>
+            </div>
+          </div>
+          <div class="earth-bottom">
+            <div class="route-card"><span class="route-dot start"></span><div><small>ВЫЛЕТ</small><strong id="departure-label">Не выбран</strong></div><span class="route-arrow">→</span><span class="route-dot end"></span><div><small>ПРИЛЁТ</small><strong id="destination-label">Не выбран</strong></div></div>
+            <div class="earth-actions">
+              <button id="describe-place" class="secondary">✦ Описать место</button>
+              <button id="generate-image" class="secondary">▧ Создать изображение</button>
+              <button id="get-weather" class="secondary">☼ Погода</button>
+            </div>
+          </div>
+          <div id="ai-panel" class="ai-panel hidden"><button id="close-ai" class="close-btn">×</button><h3 id="ai-title">Местность</h3><p id="ai-text"></p><img id="ai-image" class="generated-image hidden" alt="Сгенерированное изображение местности"></div>
+          <div class="note">Управление полётом в этой стартовой версии — базовая демонстрация. Полноценная физика, столкновения и реалистичная кабина требуют отдельной разработки.</div>
+        </section>
+      </main>
+    </div>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
