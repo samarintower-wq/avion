@@ -107,6 +107,11 @@ $("logout").addEventListener("click", async () => {
 async function initGlobe() {
   try {
     config = await api("/api/config");
+    if ($("cesium-token-message")) {
+      $("cesium-token-message").textContent = config.personal_cesium_token_saved
+        ? "Используется твой личный токен."
+        : (config.cesium_token ? "Используется токен приложения." : "Токен не настроен.");
+    }
     if (!window.Cesium) throw new Error("CesiumJS did not load. Check network access.");
     if (config.cesium_token) Cesium.Ion.defaultAccessToken = config.cesium_token;
     cesiumViewer = new Cesium.Viewer("cesiumContainer", {
@@ -192,6 +197,33 @@ async function setEarthMode(mode, persist = true) {
 }
 document.querySelectorAll("[data-mode]").forEach(b => b.addEventListener("click", () => setEarthMode(b.dataset.mode)));
 
+$("save-cesium-token")?.addEventListener("click", async () => {
+  const token = $("cesium-token-input").value.trim();
+  if (token.length < 10) {
+    $("cesium-token-message").textContent = "Вставь действительный Cesium ion viewer token.";
+    return;
+  }
+  try {
+    const result = await api("/api/cesium-token", { method: "PUT", body: JSON.stringify({ token }) });
+    $("cesium-token-message").textContent = result.message || "Токен сохранён.";
+    $("cesium-token-input").value = "";
+    if (cesiumViewer) { cesiumViewer.destroy(); cesiumViewer = null; }
+    await initGlobe();
+  } catch (e) {
+    $("cesium-token-message").textContent = e.message;
+  }
+});
+$("delete-cesium-token")?.addEventListener("click", async () => {
+  try {
+    await api("/api/cesium-token", { method: "DELETE" });
+    $("cesium-token-message").textContent = "Личный токен удалён. Используется токен приложения, если он настроен.";
+    if (cesiumViewer) { cesiumViewer.destroy(); cesiumViewer = null; }
+    await initGlobe();
+  } catch (e) {
+    $("cesium-token-message").textContent = e.message;
+  }
+});
+
 $("fly-route").addEventListener("click", () => {
   if (!departure || !destination) {
     alert("Сначала выбери точку вылета и точку прилёта.");
@@ -250,4 +282,3 @@ async function boot() {
   }
 }
 boot();
-      
